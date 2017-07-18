@@ -50,6 +50,7 @@ def update_publications(repository, collection_id_lab, collection_id_external,
     """Fetch all publications from Zotero."""
     if os.path.isfile("log/current.log"):
         os.remove("log/current.log")
+    log(datetime.now().strftime('%c'))
     # Delete old publications content
     publications_dir = os.path.join(
         repository, "content", "publication")
@@ -135,6 +136,7 @@ def deploy():
 
     if os.path.isfile("log/current.log"):
         os.remove("log/current.log")
+    log(datetime.now().strftime('%c')
     log("Parsing configuration parameters...")
 
     config = get_config(path)
