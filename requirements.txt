@@ -1,0 +1,6 @@
+Pyzotero
+PyYAML
+Flask
+Flask-HTTPAuth
+pyaml
+Jinja2
