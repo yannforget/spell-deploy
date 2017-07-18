@@ -4,13 +4,19 @@ import os
 from pathlib import Path
 from time import sleep
 from flask import Flask, render_template, request, Response, redirect, url_for
+from flask_httpauth import HTTPBasicAuth
 from concurrent.futures import ThreadPoolExecutor
 
 import deploy
 
 executor = ThreadPoolExecutor(2)
 app = Flask(__name__)
+auth = HTTPBasicAuth()
 config = deploy.get_config("deploy.conf")
+
+users = {
+    config.get("Web", "user"): config.get("Web", "password")
+}
 
 
 def locked():
@@ -20,31 +26,32 @@ def locked():
     return os.path.isfile(lock_file)
 
 
+@auth.get_password
+def get_pw(username):
+    if username in users:
+        return users.get(username)
+    return None
+
+
+@auth.login_required
 @app.route("/")
 def index():
     return render_template("index.html", locked=locked())
 
 
+@auth.login_required
 @app.route("/push")
 def push():
     executor.submit(deploy.deploy())
 
 
+@auth.login_required
 @app.route("/zotero")
 def zotero():
     executor.submit(deploy.fetch_publications())
 
 
-@app.route("/testing")
-def testing():
-    print("Running...")
-    lock_file = "cache/testing.lock"
-    lock = Path(lock_file)
-    lock.touch()
-    sleep(3)
-    print("Done.")
-
-
+@auth.login_required
 @app.route("/_log")
 def log():
     if os.path.isfile("log/current.log"):
