@@ -136,7 +136,7 @@ def deploy():
 
     if os.path.isfile("log/current.log"):
         os.remove("log/current.log")
-    log(datetime.now().strftime('%c')
+    log(datetime.now().strftime('%c'))
     log("Parsing configuration parameters...")
 
     config = get_config(path)
