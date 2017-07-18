@@ -6,6 +6,7 @@ import shutil
 from subprocess import run
 from pathlib import Path
 import configparser
+from datetime import datetime
 from fetch_zotero import fetch_zotero
 
 
@@ -33,10 +34,23 @@ def unlock(cache_dir):
     os.remove(os.path.join(cache_dir, "deploy.lock"))
 
 
-def log(message):
+def reset_log(log_dir):
+    """Reset log messages."""
+    path = os.path.join(log_dir, "current.log")
+    if os.path.isfile(path):
+        os.remove(path)
+    log_file = Path(path)
+    log_file.touch()
+
+
+def log(message, log_dir, header=False):
     """Log message."""
-    with open("log/current.log", "w") as txt:
-        txt.write("\n{}".format(message))
+    log_path = os.path.join(log_dir, "current.log")
+    with open(log_path, "a") as txt:
+        if header:
+            txt.write(message)
+        else:
+            txt.write("\n{}".format(message))
 
 
 def pull(local_repository):
@@ -46,34 +60,35 @@ def pull(local_repository):
 
 
 def update_publications(repository, collection_id_lab, collection_id_external,
-                        library_id, api_key):
+                        library_id, api_key, log_dir):
     """Fetch all publications from Zotero."""
-    if os.path.isfile("log/current.log"):
-        os.remove("log/current.log")
-    log(datetime.now().strftime('%c'))
+    reset_log(log_dir)
+    log(datetime.now().strftime('%c'), log_dir, header=True)
     # Delete old publications content
     publications_dir = os.path.join(
         repository, "content", "publication")
-    log("Removing old files...")
-    shutil.rmtree(publications_dir)
+    log("Removing old files...", log_dir)
+    if os.path.isdir(publications_dir):
+        shutil.rmtree(publications_dir)
     os.makedirs(publications_dir)
 
     # Fetch publications from Zotero
-    log("Fetching lab publications...")
+    log("Fetching lab publications...", log_dir)
     fetch_zotero(
         api_key, library_id, collection_id_lab,
         publications_dir, lab_publication=True)
-    log("Fetching team publications...")
+    log("Fetching team publications...", log_dir)
     fetch_zotero(
         api_key, library_id, collection_id_external,
         publications_dir, lab_publication=False)
-    log("Done.")
+    log("Done.", log_dir)
 
 
 def build(repository):
     """Rebuild static website with Hugo."""
     public_dir = os.path.join(repository, "public")
-    shutil.rmtree(public_dir)
+    if os.path.isdir(public_dir):
+        shutil.rmtree(public_dir)
     os.makedirs(public_dir)
     os.chdir(repository)
     run(["hugo"])
@@ -134,54 +149,55 @@ def deploy():
     """Pull changes from Github, rebuild the website and deploy the new files."""
     path = os.path.dirname(os.path.realpath(__file__))
 
-    if os.path.isfile("log/current.log"):
-        os.remove("log/current.log")
-    log(datetime.now().strftime('%c'))
-    log("Parsing configuration parameters...")
-
     config = get_config(path)
 
     cache_dir = config.get("Local", "cache_directory")
+    log_dir = config.get("Local", "log_directory")
     repository = config.get("Local", "spell_repository")
+
+    reset_log(log_dir)
+    log(datetime.now().strftime('%c'), log_dir, header=True)
+    log("Parsing configuration parameters...", log_dir)
 
     sftp_server = config.get("SFTP", "server")
     sftp_user = config.get("SFTP", "username")
     sftp_password = config.get("SFTP", "password")
     sftp_path = config.get("SFTP", "path")
 
-    log("SFTP server: %s" % sftp_server)
-    log("SFTP user: %s" % sftp_server)
-    log("SFTP path: %s" % sftp_path)
+    log("SFTP server: %s" % sftp_server, log_dir)
+    log("SFTP user: %s" % sftp_user, log_dir)
+    log("SFTP path: %s" % sftp_path, log_dir)
 
     # Exit if another instance of the script is running
     if already_running(cache_dir):
-        log("Another instance of the script is already running. Exiting...")
+        log("Another instance of the script is already running. Exiting...", log_dir)
         sys.exit()
 
     lock(cache_dir)
-    log("Pulling changes from Github...")
+    log("Pulling changes from Github...", log_dir)
     pull(repository)
-    log("Rebuilding website...")
+    log("Rebuilding website...", log_dir)
     build(repository)
-    log("Uploading files...")
+    log("Uploading files...", log_dir)
     update(sftp_server, sftp_user, sftp_password, sftp_path,
            repository, cache_dir)
     unlock(cache_dir)
 
-    log("Done.")
+    log("Done.", log_dir)
     sys.exit()
 
 def fetch_publications():
     """Fetch publications from Zotero and update website content locally."""
     # Get path of the deployment script directory
     path = os.path.dirname(os.path.realpath(__file__))
-    if os.path.isfile("log/current.log"):
-        os.remove("log/current.log")
 
     config = get_config(path)
 
     repository = config.get("Local", "spell_repository")
     cache_dir = config.get("Local", "cache_directory")
+    log_dir = config.get("Local", "log_directory")
+
+    reset_log(log_dir)
 
     collection_id_lab = config.get("Zotero", "collection_id_lab")
     collection_id_external = config.get("Zotero", "collection_id_external")
@@ -194,7 +210,7 @@ def fetch_publications():
 
     lock(cache_dir)
     update_publications(
-        repository, collection_id_lab, collection_id_external, library_id, api_key)
+        repository, collection_id_lab, collection_id_external, library_id, api_key, log_dir)
     unlock(cache_dir)
 
     sys.exit()

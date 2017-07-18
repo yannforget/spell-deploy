@@ -33,26 +33,26 @@ def get_pw(username):
     return None
 
 
-@auth.login_required
 @app.route("/")
+@auth.login_required
 def index():
     return render_template("index.html", locked=locked())
 
 
-@auth.login_required
 @app.route("/push")
+@auth.login_required
 def push():
     executor.submit(deploy.deploy())
 
 
-@auth.login_required
 @app.route("/zotero")
+@auth.login_required
 def zotero():
     executor.submit(deploy.fetch_publications())
 
 
-@auth.login_required
 @app.route("/_log")
+@auth.login_required
 def log():
     if os.path.isfile("log/current.log"):
         with open("log/current.log") as log:
