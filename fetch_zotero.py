@@ -12,7 +12,8 @@ def fetch_zotero(api_key, library_id, collection_id, pubdir, lab_publication):
         """Get elements from a zotero collection."""
         items = zot_api.everything(zot_api.collection_items(collection_id))
         return [item['data'] for item in items
-                if item['data']['itemType'] != 'attachment']
+                if item['data']['itemType'] != 'attachment'
+                and 'parentItem' not in item['data']]
 
     def format_date(date):
         """Returns the year from a date string."""
