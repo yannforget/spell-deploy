@@ -206,6 +206,7 @@ def fetch_publications():
 
     # Exit if another instance of the script is running
     if already_running(cache_dir):
+        log("Another instance of the script is already running. Exiting...", log_dir)
         sys.exit()
 
     lock(cache_dir)
